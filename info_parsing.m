@@ -1,0 +1,82 @@
+function info_parsing(info_bits)
+% Parsing information from bits after trying to correct them
+arguments (Input)
+    info_bits % Bits to run on
+end 
+    info_bits = info_bits(1:91*8);
+    to_degrees = 174533;
+    if (CRC_check(info_bits))
+        % The bits are correct, we can go on and check the package
+        info_bits = reshape(info_bits, [], 8); % Organize rows as bits
+        big_endian_rows = [(8:23) (70:89)];
+        big_endian_info_bits = info_bits(big_endian_rows); % Only Big endian bytes included
+
+        % Information parsing
+        disp("packet length: ")
+        packet_length = bi2de(info_bits(1,:), 2, "left-msb") % Little endian
+
+        disp("Version: ")
+        Version = bi2de(info_bits(3,:), 2, "left-msb")
+
+        disp("Sequence number: ")
+        Sequence_number = bi2de(reshape(info_bits(4:5,:), 1, []), 2, "left-msb")
+
+        % Maybe for later
+        disp("State info: ");
+        % state_info = bi2de(reshape(info_bits(6:7,:), 1, []), 2, "right-msb");
+        state_info = reshape(info_bits(6:7,:), 1, []);
+        velocity_north_valid = state_info(14);
+        velocity_east_valid = state_info(15);
+        velocity_up_valid = state_info(16);
+
+        disp("Serial number: ")
+        serial_number = char(bin2dec(char(big_endian_rows(1:16,:) + '0'), 2, "right-msb").')
+
+
+        longitude = bi2de(reshape(info_bits(24:27,:), 1, []), 2, "left-msb") / to_degrees;
+        latitude = bi2de(reshape(info_bits(28:31,:), 1, []), 2, "left-msb") / to_degrees;
+        
+        disp("Altitude from sea level: ")
+        altitude = bi2de(reshape(info_bits(32:33,:), 1, []), 2, "left-msb")
+
+        disp("height from ground: ")
+        height = bi2de(reshape(info_bits(34:35,:), 1, []), 2, "left-msb")
+
+        if (velocity_east_valid)
+            disp("velocity east: ")
+            velocity_east = bi2de(reshape(info_bits(36:37,:), 1, []), 2, "left-msb")
+        else
+            disp("Velocity east invalid")
+        end
+        if (velocity_north_valid)
+            disp("velocity north: ")
+            velocity_north = bi2de(reshape(info_bits(38:39,:), 1, []), 2, "left-msb")
+        else
+            disp("Velocity north invalid")
+        end
+        if (velocity_up_valid)
+            disp("velocity up: ")
+            velocity_up = bi2de(reshape(info_bits(40:41,:), 1, []), 2, "left-msb")
+        else
+            disp("Velocity up invalid")
+        end
+
+        disp("Current time")
+        epoch_time = bi2de(reshape(info_bits(44:51,:), 1, []), 2, "left-msb") / 1e3; % Epoch time in seconds
+        date_time = datetime(epoch_time, 'ConvertFrom', 'posixtime', 'TimeZone', 'local')
+
+        app_latitude = bi2de(reshape(info_bits(52:55,:), 1, []), 2, "left-msb") / to_degrees;
+        app_longitude = bi2de(reshape(info_bits(56:59,:), 1, []), 2, "left-msb") / to_degrees;
+
+        home_latitude = bi2de(reshape(info_bits(60:63,:), 1, []), 2, "left-msb") / to_degrees;
+        home_longitude = bi2de(reshape(info_bits(64:67,:), 1, []), 2, "left-msb") / to_degrees;
+        
+
+        disp("Device type")
+        device_type = bi2de(info_bits(68), 2, "left-msb")
+
+        disp("Device UUID")
+        UUID_length = bi2de(info_bits(69), 2, "left-msb");
+        UUID = char(bin2dec(char(big_endian_rows(17:end,:) + '0'), 2, "right-msb").')
+    end
+end
