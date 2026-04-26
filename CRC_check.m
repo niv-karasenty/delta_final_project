@@ -1,15 +1,15 @@
 function is_valid = CRC_check(bits)
 % Checking crc code
 arguments (Input)
-    bits % input bits
+    bits (:,1) % input bits
 end
 
 arguments (Output)
-    is_valid (1,1) % Shows wether the validation of the packet
+    is_valid (1,1) % Shows wether the validation of the packet 0 - invalid, 1 - valid
 end
 
-
-crc_obj = crcConfig(Polynomial='z^16 + z^11 + z^4 + 1', InitialConditions=[0 1 0 0 1 0 0 1 0 1 1 0 1 1 0 0]);
-[num_of_err, is_valid] = crcDetect(bits.', crc_obj);
+init_cond = dec2bin(hex2dec('0x496c'), 16) - '0';
+crc_obj = crcConfig(Polynomial='x^16 + x^11 + x^4 + 1', InitialConditions=init_cond.', DirectMethod=1, ReflectInputBytes=1, ReflectChecksums=0);
+[~, is_valid] = crcDetect(bits, crc_obj);
 is_valid = ~is_valid;
 end
