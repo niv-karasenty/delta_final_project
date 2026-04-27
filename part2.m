@@ -35,11 +35,11 @@ xlabel('RBER');
 ylabel('UBER');
 legend('with correction', 'without correction');
 
-
+%% Functions
 function [corrected_bits,no_correction] = correct_bits(raw_bits)
-
+% Correcting the bits using all the steps in the way
 arguments
-    raw_bits (1, 7200)
+    raw_bits (1,7200)
 end
  
     demasked_bits=demask(raw_bits);

@@ -1,0 +1,30 @@
+clc;
+clear;
+close all;
+
+% List of synced samples file names
+base_folder_samples_name = 'synced_samples/';
+synced_samples_file_names = dir('synced_samples');
+synced_samples_file_names = {synced_samples_file_names(~[synced_samples_file_names.isdir]).name}';
+
+% List of 
+base_folder_bits_name = 'raw_bits/';
+raw_bits_file_names = dir('raw_bits');
+raw_bits_file_names = {raw_bits_file_names(~[raw_bits_file_names.isdir]).name}';
+
+% Run through some files
+for i = 1
+    curr_samples_file_name = append(base_folder_samples_name, string(synced_samples_file_names(i)))
+    curr_raw_bits_file_name = append(base_folder_bits_name, string(raw_bits_file_names(i)))
+    % Load samples from the file
+    file_id = fopen(curr_samples_file_name, 'rb');
+    raw_samples = fread(file_id, inf, 'float32');
+    raw_samples = raw_samples(1:2:end) + 1j*raw_samples(2:2:end);
+    fclose(file_id);
+
+    raw_bits = demodulate_samples(raw_samples, 1, 1);
+
+    curr_bits_file_text = fileread(raw_bits_file_names(1));
+    curr_bits_file_bits = de2bi(sscanf(curr_bits_file_text, '%2x')).';
+    curr_bits_file_bits = curr_bits_file_bits(:);
+end
