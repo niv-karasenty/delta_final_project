@@ -24,8 +24,8 @@ for i = 1
 
     raw_bits = demodulate_samples(raw_samples, 1, 1);
 
-    curr_bits_file_text = fileread(curr_raw_bits_file_name(1));
+    curr_bits_file_text = fileread(curr_raw_bits_file_name);
     curr_bits_file_bits = de2bi(sscanf(curr_bits_file_text, '%2x')).';
     curr_bits_file_bits = curr_bits_file_bits(:);
-    sum(curr_bits_file_bits ~= raw_bits)
+    sum(curr_bits_file_bits ~= raw_bits)/length(raw_bits)
 end

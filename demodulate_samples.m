@@ -10,49 +10,57 @@ arguments (Output)
     raw_bits % Bits after demodulating
 end
 
-fs = 15.36e6; % Current sample freq
+fs = 1e7*p/q; % Current sample freq
 cp_len = 72; % Samples of cp
 special_cp_len = 80; % samples of cp in symbols 1 and 9
 fft_size = 1024;
 rel_samples = (213:813);
-rel_samples(300) = []; 
+rel_samples(floor(end/2)) = []; 
 
 % QPSK
 M = 4; % QPSK order
 ini_phase = 1*p/4;
 
 
-
 % Resample samples to be in the correct format
 samples = resample(samples, q, p); % Invert the resample proccess
 
+% Remove pilot symbols
+symbol_len = fft_size + cp_len;
+samples(symbol_len*5+1 + 8:symbol_len*6 + 8) = [];
+samples(symbol_len*3+1 + 8:symbol_len*4 + 8) = [];
+
 % Remove first symbol
 first_symbol_len = fft_size + special_cp_len; % Length of the first symbol
-samples = samples(first_symbol_len+1:end);
-
-
-symbol_len = fft_size + cp_len;
-% samples(symbol_len*5+1:symbol_len*6) = []; % 6th symbol is a pilot
-% samples(symbol_len*3+1:symbol_len*4) = []; % 4th symbol is a pilot
+samples = samples(first_symbol_len + 1: end);
 
 % Remove cyclic longer prefix in 9th symbol
-samples(end-7:end) = [];
+samples(end-first_symbol_len+1:end-first_symbol_len+8) = [];
 
-ofdm_matrix = reshape(samples, [], 8); % Each ofdm symbol has it's own column
-
-% Remove pilot symbols
-ofdm_matrix(:, [3,5]) = []; % We removed the first symbol so the pilot
+ofdm_matrix = reshape(samples, [], 6); % Each ofdm symbol has it's own column
 
 % Remove cyclic prefix
-ofdm_matrix(end-cp_len+1:end,:) = [];
+%======weird part here=========%
+ ofdm_matrix(1:cp_len,:) = [];
+% ofdm_matrix = ofdm_matrix(1:end-cp_len,:);
 
-fft_matrix = fftshift(fft(ofdm_matrix, fft_size)); % Get the symbols in the freq domain
+fft_matrix = fftshift(fft(ofdm_matrix, fft_size), 1); % Get the symbols in the freq domain
 
 % Cut relevant samlpes
 fft_matrix = fft_matrix(rel_samples,:);
 
 symbols = fft_matrix(:); % Return to a vector form
 
-raw_bits = pskdemod(symbols, M, ini_phase, 'gray', 'OutputType', 'bit');
-% raw_bits = dpskdemod(symbols, M, ini_phase, 'gray', 'OutputType', 'bit');
+raw_symbols = pskdemod(symbols, M, ini_phase, 'gray');
+
+% Switch between 2 and 1 because we are toxic
+% raw_symbols(raw_symbols == 1) = 5; % Temp value
+% raw_symbols(raw_symbols == 2) = 1;
+% raw_symbols(raw_symbols == 5) = 2;
+
+% decimal to binary
+raw_bits = de2bi(raw_symbols).';
+raw_bits = raw_bits(:);
+
+scatterplot(symbols);
 end
