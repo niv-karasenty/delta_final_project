@@ -11,7 +11,7 @@ end
 
     info_bits = info_bits(1:91*8);
     to_degrees = 174533;
-    crc_valid = CRC_check(info_bits)
+    crc_valid = CRC_check(info_bits);
 
     info_bits = reshape(info_bits, 8, []).'; % Organize rows as bits
     big_endian_rows = [(8:23) (70:89)];

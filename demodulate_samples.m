@@ -15,7 +15,7 @@ cp_len = 72; % Samples of cp
 special_cp_len = 80; % samples of cp in symbols 1 and 9
 fft_size = 1024;
 rel_samples = (213:813);
-rel_samples(floor(end/2)) = []; 
+rel_samples(513) = [];
 
 % QPSK
 M = 4; % QPSK order
