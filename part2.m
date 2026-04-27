@@ -7,13 +7,18 @@ close all;
 clear;
 
 
-raw_hex=fileread("raw_bits_12_Feb_2026_09_30_39_442.txt");
+raw_hex=fileread("raw_bits_12_Feb_2026_09_30_40_676.txt");
 raw_bits = hex_to_binary(raw_hex);
 
-test_hex = fileread("processed_bits12_Feb_2026_09_30_39_442.txt");
+test_hex = fileread("processed_bits12_Feb_2026_09_30_40_676.txt");
 test_bits=hex_to_binary(test_hex);
 
-rbers=[1e-3, 0.003, 0.005, 0.007, 1e-2, 0.03, 0.05, 0.07, 1e-1];
+% indices = randi([1 728], 1, 100);
+% raw_bits(indices)=~raw_bits(indices);
+% [corrected_bits, no_correction]=correct_bits(raw_bits);
+% biterr(test_bits, no_correction(1:728))
+
+rbers=[1e-3, 0.003, 0.005, 0.007, 1e-2, 0.05, 0.1];
 ubers_correction=zeros(1, length(rbers));
 ubers_no_correction=zeros(1, length(rbers));
 
@@ -21,22 +26,22 @@ data_len=728; % 91 bytes
 
 for i = 1:length(rbers)
     raw_bits=bsc(raw_bits, rbers(i));
-    [corrected_bits,no_correction]=correct_bits(raw_bits);
-    ubers_correction(i)=biterr(test_bits, corrected_bits(1:data_len))/data_len;
-    ubers_no_correction(i)=biterr(test_bits, no_correction(1:data_len))/data_len;
+    [corrected_bits, no_correction]=correct_bits(raw_bits);
+    ubers_correction(i)=biterr(no_correction(1:data_len), test_bits)/data_len;
+    ubers_no_correction(i)=biterr(corrected_bits(1:data_len), test_bits)/data_len;
 end
 
 figure
-loglog(rbers, ubers_correction);
+semilogy(rbers, ubers_correction);
 hold on
-loglog(rbers, ubers_no_correction)
+semilogy(rbers, ubers_no_correction)
 hold off
 xlabel('RBER');
 ylabel('UBER');
 legend('with correction', 'without correction');
 
 
-function [corrected_bits,no_correction] = correct_bits(raw_bits)
+function [corrected_bits, no_correction] = correct_bits(raw_bits)
 
 arguments
     raw_bits (1, 7200)
@@ -51,25 +56,37 @@ end
     % generated the real parity bits to see if it works better
     % but it yields to the same results as without it
 
-    %conv_out=convenc(S, poly2trellis(4, [13 15], 13));
-    %real_parity = conv_out(2:2:end);
-    
-    corrected_bits=turbo(S, P1, P2);
+    % conv_out=convenc(S, poly2trellis(4, [13 15], 13));
+    % real_parity = conv_out(2:2:end);
+    % length(P1)
+    % length(conv_out)
     no_correction=S;
+    corrected_bits=turbo(S, P1, P2);
+
 end
 
 function corrected_bits=turbo(S, P1, P2)
     
     
-    code = interleace(S, P1);
+
+    % encodedData=[S;P1;P2];
+    % encodedData=encodedData(:).';
+    % p = qfunc(sqrt(2 * 10^(10/10)));
+    % [receivedData, nzVar] = bsc(encodedData, p)
+    
+    code=[S;P1];
+    code=code(:).';
 
     max_degree=3;
     constraint_length=max_degree+1;
     % 5 is standard for conv codes with rate of 1/2
     tb=5*constraint_length;
-    
+
     % 13 and 15
     trellis=poly2trellis(constraint_length, [13 15], 13);
+
+    % viterbidecoder = comm.ViterbiDecoder('TrellisStructure', trellis,'TracebackDepth',tb, 'InputFormat','Hard', 'TerminationMethod','Truncated');
+    % corrected_bits=viterbidecoder(code.').';
 
     corrected_bits=vitdec(code,trellis,tb,'trunc','hard');
     
@@ -109,8 +126,7 @@ function deinterleaved_bit_arrays = deinterleave(bits_array)
         % remove 28 dummy values
     
         deinterleaved_bits=deinterleaved_bits(29:end);
-        
-        % remove 4 last bits
+
         deinterleaved_bits=deinterleaved_bits(1:end-4);
 
         % add to result array
@@ -170,8 +186,10 @@ end
 function decycled_bits = decycle_buffer(demasked_bits)
     num_bits_post_correction_code=4236;
     start_idx=4149;
-    packet_len=7200;
-    decycled_bits = [demasked_bits(start_idx:end), demasked_bits(1:num_bits_post_correction_code - (packet_len-start_idx+1))];
+
+    demasked_bits=demasked_bits(1:num_bits_post_correction_code);
+    decycled_bits=circshift(demasked_bits, num_bits_post_correction_code-start_idx+1);
+
 end
 
 function demasked_bits = demask(raw_bits)
@@ -213,9 +231,4 @@ function bits = hex_to_binary(hex)
     % flatten
     bits = reshape(bits.', 1, []);
 
-end
-
-function interleaced = interleace(x, y)
-    interleaced=[x;y];
-    interleaced=interleaced(:).';
 end
