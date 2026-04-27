@@ -6,18 +6,37 @@ clc;
 close all;
 clear;
 
+
 raw_hex=fileread("raw_bits_12_Feb_2026_09_30_39_442.txt");
 raw_bits = hex_to_binary(raw_hex);
-corrected_bits=correct_bits(raw_bits);
 
 test_hex = fileread("processed_bits12_Feb_2026_09_30_39_442.txt");
 test_bits=hex_to_binary(test_hex);
 
+rbers=[1e-3, 0.003, 0.005, 0.007, 1e-2, 0.03, 0.05, 0.07, 1e-1];
+ubers_correction=zeros(1, length(rbers));
+ubers_no_correction=zeros(1, length(rbers));
 
-biterr(test_bits, corrected_bits(1:728))
+data_len=728; % 91 bytes
+
+for i = 1:length(rbers)
+    raw_bits=bsc(raw_bits, rbers(i));
+    [corrected_bits,no_correction]=correct_bits(raw_bits);
+    ubers_correction(i)=biterr(test_bits, corrected_bits(1:data_len))/data_len;
+    ubers_no_correction(i)=biterr(test_bits, no_correction(1:data_len))/data_len;
+end
+
+figure
+loglog(rbers, ubers_correction);
+hold on
+loglog(rbers, ubers_no_correction)
+hold off
+xlabel('RBER');
+ylabel('UBER');
+legend('with correction', 'without correction');
 
 
-function corrected_bits = correct_bits(raw_bits)
+function [corrected_bits,no_correction] = correct_bits(raw_bits)
 
 arguments
     raw_bits (1, 7200)
@@ -26,87 +45,81 @@ end
     demasked_bits=demask(raw_bits);
     decycled_bits=decycle_buffer(demasked_bits);
     [S, P1, P2] = deinterlace(decycled_bits);
-    corrected_bits=turbo(S, P1, P2);
+    deinterleaved_bit_arrays = deinterleave({S, P1, P2});
+    [S, P1, P2] = deinterleaved_bit_arrays{:};
 
+    % generated the real parity bits to see if it works better
+    % but it yields to the same results as without it
+
+    %conv_out=convenc(S, poly2trellis(4, [13 15], 13));
+    %real_parity = conv_out(2:2:end);
+    
+    corrected_bits=turbo(S, P1, P2);
+    no_correction=S;
 end
 
 function corrected_bits=turbo(S, P1, P2)
-    corrected_bits=deinterleave(S);
-    % ls=[S; P1; P2];
-    % for i = 1:3
-    %     ls(i,:) = deinterleave(ls(i,:));
-    % end
-    % 
-    % % g(d) = [1, (1 + d + d^2 + d^3)/(1+d^2+d^3)]
-    % % in octal representation of the poly vectors we get [17, 13]
-    % % where 17 is for the parity path and 13 is for the feedback
-    % 
-    % CodeGenerator=[17, 13];
-    % ConstraintLength=4; % max_degree+1 which is the number of shift registers
-    % FeedbackConnection=17; % denominator (parity path) octal
-    % 
-    % trellis = poly2trellis(ConstraintLength,CodeGenerator,FeedbackConnection);
-    % interlv_indices=mod((43*(1:1408) + 88 * (1:1408).^2), 1408)+1;
-    % interlv_indices(interlv_indices<=0)
-    % numIter=6;
-    % turboDec = comm.TurboDecoder(trellis, interlv_indices, numIter);
-    % 
-    % codeword = [ls(1,:), ls(2,:), ls(3,:)];
-    % 
-    % % if hard decision we need to map to bipolar (0 1 to -1 1)
-    % % if soft decision we need to invert (*-1)
-    % 
-    % corrected_bits=turboDec(1-2*codeword).';
+    
+    
+    code = interleace(S, P1);
+
+    max_degree=3;
+    constraint_length=max_degree+1;
+    % 5 is standard for conv codes with rate of 1/2
+    tb=5*constraint_length;
+    
+    % 13 and 15
+    trellis=poly2trellis(constraint_length, [13 15], 13);
+
+    corrected_bits=vitdec(code,trellis,tb,'trunc','hard');
+    
     
 end
 
-function interleaved_bits = interleave(bits)
 
-interleave_indices = [1,17,9,25,5,21,13,29,3,19,11,27,7,23,15,31,2,18,10,26,6,22,14,30,4,20,12,28,8,24,16,32];
-
-dummy_val=-1;
-bits=[dummy_val*ones(1,28), bits];
-
-% to rows in matrix
-
-bits=reshape(bits, 32, []).';
-
-% interleave
-interleaved_bits=bits(:, interleave_indices);
-
-% flatten
-
-interleaved_bits=reshape(interleaved_bits, 1, []);
-
-% remove dummy
-
-interleaved_bits(interleaved_bits==dummy_val)=[];
-
-end
-
-function deinterleaved_bits = deinterleave(bits)
+% bits array consists S, P1, P2 and this function deinterleaves them all
+function deinterleaved_bit_arrays = deinterleave(bits_array)
+    
+    deinterleaved_bit_arrays={NaN, NaN, NaN};
     
     interleave_indices = [1,17,9,25,5,21,13,29,3,19,11,27,7,23,15,31,2,18,10,26,6,22,14,30,4,20,12,28,8,24,16,32];
-
-
-    bits = insert_dummy(bits, interleave_indices);
-    bits=reshape(bits, 45, []);
-    
-    % deinterleave columns
+    % create deinterleave indices given interleave indices
     deinterleave_indices=zeros(1, length(interleave_indices));
     for i=1:length(interleave_indices)
         deinterleave_indices(interleave_indices(i))=i;
     end
-    deinterleaved_bits=bits(:, deinterleave_indices);
+    
+    for k = 1:length(bits_array)
 
-    % rows to vector
+        bits = bits_array{k};
 
-    deinterleaved_bits=deinterleaved_bits.';
-    deinterleaved_bits=deinterleaved_bits(:).';
+        bits = insert_dummy(bits, interleave_indices);
 
-    % remove 28 dummy values
+        % put as cols
+        bits=reshape(bits, 45, []);
+        
+        % deinterleave
+        deinterleaved_bits=bits(:, deinterleave_indices);
+    
+        % rows to vector
+    
+        deinterleaved_bits=deinterleaved_bits.';
+        deinterleaved_bits=deinterleaved_bits(:).';
+    
+        % remove 28 dummy values
+    
+        deinterleaved_bits=deinterleaved_bits(29:end);
+        
+        % remove 4 last bits
+        deinterleaved_bits=deinterleaved_bits(1:end-4);
 
-    deinterleaved_bits=deinterleaved_bits(29:end);
+        % add to result array
+
+        deinterleaved_bit_arrays{k}=deinterleaved_bits;
+
+
+    end
+
 end
 
 function res = insert_dummy(bits, interleave_indices)
@@ -200,4 +213,9 @@ function bits = hex_to_binary(hex)
     % flatten
     bits = reshape(bits.', 1, []);
 
+end
+
+function interleaced = interleace(x, y)
+    interleaced=[x;y];
+    interleaced=interleaced(:).';
 end
