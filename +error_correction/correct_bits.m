@@ -1,4 +1,4 @@
-function [corrected_viterbi, corrected_turbo, not_corrected] = correct_bits(raw_bits)
+function corrected_bits = correct_bits(raw_bits)
 
 arguments
     raw_bits (1, 7200)
@@ -10,9 +10,7 @@ end
     deinterleaved_bit_arrays = error_correction.deinterleave({S, P1, P2});
     [S, P1, P2] = deinterleaved_bit_arrays{:};
 
-    not_corrected=S;
-    corrected_viterbi= error_correction.viterbi(S, P1);
     num_iters=6;
-    corrected_turbo= error_correction.turbo(S, P1, P2, num_iters);
+    corrected_bits= error_correction.turbo(S, P1, P2, num_iters);
 
 end

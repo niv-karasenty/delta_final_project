@@ -54,7 +54,7 @@ arguments (Output)
     is_valid % The code is validated using crc 24
 end
 
-[~, corrected_bits, ~] = error_correction.correct_bits(raw_bits);
+corrected_bits = error_correction.correct_bits(raw_bits);
 
 % Check corrected bits using crc 24
 is_valid = ~error_correction.crc_24_check(corrected_bits);
