@@ -1,3 +1,5 @@
+% author - guni deyo haness
+
 % Part 2 (correction code):
 % goldcode de-masking -> cyclic buffer extraction -> de-interlacing ->
 % de-interleaving -> viterbi -> bits
@@ -6,34 +8,38 @@ clc;
 close all;
 clear;
 
+raw_prefix='raw_bits';
+test_prefix='processed_bits';
+raw_files=dir(fullfile('', [raw_prefix, '*']));
+test_files=dir(fullfile('', [test_prefix, '*']));
 
-raw_hex=fileread("raw_bits_12_Feb_2026_09_30_39_442.txt");
-raw_bits = hex_to_binary(raw_hex);
+rbers=1e-4:0.005:1e-1;
 
-test_hex = fileread("processed_bits12_Feb_2026_09_30_39_442.txt");
-test_bits=hex_to_binary(test_hex);
-
-% indices = randi([1 728], 1, 100);
-% raw_bits(indices)=~raw_bits(indices);
-% [corrected_bits, no_correction]=correct_bits(raw_bits);
-% isequal(corrected_bits,no_correction)
-% biterr(test_bits, corrected_bits(1:728))
-
-
-rbers=1e-5:0.0001:1e-1;
 bers_viterbi=zeros(1, length(rbers));
 bers_turbo=zeros(1, length(rbers));
 bers_no_correction=zeros(1, length(rbers));
 data_len=728; % 91 bytes
 
 for i = 1:length(rbers)
-    raw_bits=bsc(raw_bits, rbers(i));
     
-    [corrected_bits_viterbi, corrected_bits_turbo, not_corrected]=correct_bits(raw_bits);
+    for j = 1:length(raw_files)
 
-    bers_viterbi(i)=biterr(corrected_bits_viterbi(1:data_len), test_bits)/data_len;
-    bers_turbo(i)=biterr(corrected_bits_turbo(1:data_len), test_bits)/data_len;
-    bers_no_correction(i)=biterr(not_corrected(1:data_len), test_bits)/data_len;
+        raw_bits=hex_to_binary(fileread(raw_files(j).name));
+        test_bits=hex_to_binary(fileread(test_files(j).name));
+
+
+        raw_bits=bsc(raw_bits, rbers(i));
+    
+        [corrected_bits_viterbi, corrected_bits_turbo, not_corrected]=correct_bits(raw_bits);
+    
+        bers_viterbi(i)=bers_viterbi(i)+biterr(corrected_bits_viterbi(1:data_len), test_bits)/data_len;
+        bers_turbo(i)=bers_turbo(i)+biterr(corrected_bits_turbo(1:data_len), test_bits)/data_len;
+        bers_no_correction(i)=bers_no_correction(i)+biterr(not_corrected(1:data_len), test_bits)/data_len;
+
+    end
+    bers_viterbi(i)=bers_viterbi(i)/length(raw_files);
+    bers_turbo(i)=bers_viterbi(i)/length(raw_files);
+    bers_no_correction(i)=bers_no_correction(i)/length(raw_files);
 end
 
 figure
@@ -42,6 +48,8 @@ hold on
 loglog(rbers, bers_viterbi);
 loglog(rbers, bers_turbo);
 hold off
+xlim([1e-4 1e-1])
+set(gca, 'XDir','reverse')
 xlabel('rber');
 ylabel('uber');
 legend('no correction', 'viterbi','turbo');
@@ -85,6 +93,54 @@ function corrected_bits=viterbi(S, P)
 end
 
 function corrected_bits=turbo(S, P1, P2, num_iters)
+
+interleave_indices = mod((43*(1:1408) + 88*(1:1408).^2),1408)+1;
+% create deinterleave indices given interleave indices
+deinterleave_indices=zeros(1, length(interleave_indices));
+for i=1:length(interleave_indices)
+    deinterleave_indices(interleave_indices(i))=i;
+end
+
+max_degree=3;
+constraint_length=max_degree+1;
+% 5 is standard for conv codes with rate of 1/2
+tb=5*constraint_length;
+
+trellis=poly2trellis(constraint_length, [13 15], 13);
+
+for n=1:num_iters
+
+    % P1
+    code1=[S;P1];
+    code1=code1(:).';
+
+
+    % REMEMBER TO MULTIPLY IN MINUS 1 IF SOFT DEICSION
+    corrected_bits1=vitdec(code1,trellis,tb,'trunc','hard');
+
+    corrected_bits1=corrected_bits1(deinterleave_indices);
+
+    % P2
+
+    S_interleaved=S(interleave_indices);
+
+    code2=[S_interleaved;P2];
+    code2=code2(:).';
+
+
+    % REMEMBER TO MULTIPLY IN MINUS 1 IF SOFT DEICSION
+    corrected_bits2=vitdec(code2,trellis,tb,'trunc','hard');
+
+    corrected_bits2=corrected_bits2(deinterleave_indices);
+
+    % majority vote - old S, corrected_bits1, corrected_bits2
+    S=mode([S; corrected_bits1; corrected_bits2],1);
+end
+corrected_bits=S;
+
+end
+
+function corrected_bits=turbo1(S, P1, P2, num_iters)
 
     interleave_indices = mod((43*(1:1408) + 88*(1:1408).^2),1408)+1;
     % create deinterleave indices given interleave indices
