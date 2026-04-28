@@ -16,13 +16,16 @@ fclose(file_id);
 
 % Get information from synced samples
 raw_bits = get_raw_bits(raw_samples, 1, 1);
-information = process_bits(raw_bits, curr_samples_file_name);
+
+[information, is_valid] = process_bits(raw_bits, curr_samples_file_name);
+information.crc_valid = is_valid;
 
 % Plot a nice map
 geoscatter([information.app_lat, information.home_lat], [information.app_long, information.home_long], 'filled');
 geolimits([information.app_lat-0.05, information.app_lat+0.05], [information.app_long-0.05, information.app_long+0.05])
 geobasemap streets;
 
+information.crc_valid
 %% Functions
 function raw_bits = get_raw_bits(samples, p, q)
 arguments (Input)
@@ -39,7 +42,8 @@ raw_bits = demodulate_samples(samples, p, q);
 
 end
 
-function data = process_bits(raw_bits, file_name)
+% Procces bits, error correction
+function [data, is_valid] = process_bits(raw_bits, file_name)
 arguments (Input)
     raw_bits (1,7200) % all bits from message
     file_name % Current file name
@@ -47,9 +51,14 @@ end
 
 arguments (Output)
     data % Data file of all needed information
+    is_valid % The code is validated using crc 24
 end
 
 [~, corrected_bits, ~] = error_correction.correct_bits(raw_bits);
+
+% Check corrected bits using crc 24
+is_valid = ~error_correction.crc_24_check(corrected_bits);
+
 corrected_bits = corrected_bits(1:91*8); % Cut only information bits
 
 % flip bits in each byte
