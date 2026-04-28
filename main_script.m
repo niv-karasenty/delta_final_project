@@ -14,6 +14,8 @@ raw_samples = fread(file_id, inf, 'float32');
 raw_samples = raw_samples(1:2:end) + 1j*raw_samples(2:2:end);
 fclose(file_id);
 
+raw_samples = drone_id_demod
+
 % Get information from synced samples
 raw_bits = get_raw_bits(raw_samples, 1, 1);
 

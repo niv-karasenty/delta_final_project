@@ -2,7 +2,7 @@ clc
 close all
 clear
 
-file = 'samples4.32fc';
+file = 'raw_samples/raw_samples_12_Feb_2026_09_30_39_442_fs_10MHz.32fc';
 fs = 10e6;
 
 data = drone_id_demod(file, fs);

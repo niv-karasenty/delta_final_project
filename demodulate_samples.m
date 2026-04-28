@@ -21,33 +21,33 @@ M = 4; % QPSK order
 ini_phase = 1*p/4;
 
 % Resample samples to be in the correct format
-samples = resample(samples, q, p); % Invert the resample proccess
+% samples = resample(samples, q, p); % Invert the resample proccess
+% 
+% % Remove pilot symbols
+% symbol_len = fft_size + cp_len;
+% samples(symbol_len*5+1 + 8:symbol_len*6 + 8) = [];
+% samples(symbol_len*3+1 + 8:symbol_len*4 + 8) = [];
+% 
+% % Remove first symbol
+% first_symbol_len = fft_size + special_cp_len; % Length of the first symbol
+% samples = samples(first_symbol_len + 1: end);
+% 
+% % Remove cyclic longer prefix in 9th symbol
+% samples(end-first_symbol_len+1:end-first_symbol_len+8) = [];
+% 
+% ofdm_matrix = reshape(samples, [], 6); % Each ofdm symbol has it's own column
+% 
+% % Remove cyclic prefix
+% %======weird part here=========%
+%  ofdm_matrix(1:cp_len,:) = [];
+% % ofdm_matrix = ofdm_matrix(1:end-cp_len,:);
+% 
+% fft_matrix = fftshift(fft(ofdm_matrix, fft_size), 1); % Get the symbols in the freq domain
+% 
+% % Cut relevant samlpes
+% fft_matrix = fft_matrix(rel_samples,:);
 
-% Remove pilot symbols
-symbol_len = fft_size + cp_len;
-samples(symbol_len*5+1 + 8:symbol_len*6 + 8) = [];
-samples(symbol_len*3+1 + 8:symbol_len*4 + 8) = [];
-
-% Remove first symbol
-first_symbol_len = fft_size + special_cp_len; % Length of the first symbol
-samples = samples(first_symbol_len + 1: end);
-
-% Remove cyclic longer prefix in 9th symbol
-samples(end-first_symbol_len+1:end-first_symbol_len+8) = [];
-
-ofdm_matrix = reshape(samples, [], 6); % Each ofdm symbol has it's own column
-
-% Remove cyclic prefix
-%======weird part here=========%
- ofdm_matrix(1:cp_len,:) = [];
-% ofdm_matrix = ofdm_matrix(1:end-cp_len,:);
-
-fft_matrix = fftshift(fft(ofdm_matrix, fft_size), 1); % Get the symbols in the freq domain
-
-% Cut relevant samlpes
-fft_matrix = fft_matrix(rel_samples,:);
-
-symbols = fft_matrix(:); % Return to a vector form
+symbols = samples(:); % Return to a vector form
 
 raw_symbols = pskdemod(symbols, M, ini_phase, 'gray');
 
