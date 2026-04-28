@@ -10,17 +10,15 @@ arguments (Output)
     raw_bits % Bits after demodulating
 end
 
-fs = 1e7*p/q; % Current sample freq
 cp_len = 72; % Samples of cp
 special_cp_len = 80; % samples of cp in symbols 1 and 9
 fft_size = 1024;
 rel_samples = (213:813);
-rel_samples(513) = [];
+rel_samples(rel_samples == 513) = []; % Remove null from the middle
 
 % QPSK
 M = 4; % QPSK order
 ini_phase = 1*p/4;
-
 
 % Resample samples to be in the correct format
 samples = resample(samples, q, p); % Invert the resample proccess
@@ -53,14 +51,8 @@ symbols = fft_matrix(:); % Return to a vector form
 
 raw_symbols = pskdemod(symbols, M, ini_phase, 'gray');
 
-% Switch between 2 and 1 because we are toxic
-% raw_symbols(raw_symbols == 1) = 5; % Temp value
-% raw_symbols(raw_symbols == 2) = 1;
-% raw_symbols(raw_symbols == 5) = 2;
 
 % decimal to binary
 raw_bits = de2bi(raw_symbols).';
 raw_bits = raw_bits(:);
-
-scatterplot(symbols);
 end
