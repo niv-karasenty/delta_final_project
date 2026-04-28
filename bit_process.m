@@ -4,6 +4,24 @@
 % goldcode de-masking -> cyclic buffer extraction -> de-interlacing ->
 % de-interleaving -> viterbi -> bits
 
+%% crc
+
+clc;
+close all;
+clear;
+
+raw_bits = hex_to_binary(fileread("raw_bits_12_Feb_2026_09_30_39_442.txt"));
+[~, corrected, ~] = correct_bits(raw_bits);
+
+%add errors
+num_errs=1;
+errs=randerr(1, length(corrected), num_errs);
+corrected=xor(corrected,errs);
+
+err=crc(corrected)
+
+%% sim
+
 clc;
 close all;
 clear;
@@ -58,14 +76,14 @@ legend('no correction', 'viterbi','turbo');
 
 % bit_vec will be the vector post correction
 % to check if errors still persist
-function err = crc(bit_vec, poly)
+function err = crc(bit_vec,poly)
 
 arguments
     bit_vec
     poly="z^24 + z^23 + z^18 + z^17 + z^14 + z^11 + z^10 + z^7 + z^6 + z^5 + z^4 + z^3 + z + 1"
 end
 
-crcConf = crcConfig(poly);
+crcConf = crcConfig(Polynomial=poly);
 [~, err] = crcDetect(logical(bit_vec).', crcConf);
 
 end
