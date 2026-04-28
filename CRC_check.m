@@ -10,6 +10,8 @@ end
 
 init_cond = dec2bin(hex2dec('0x496c'), 16) - '0';
 crc_obj = crcConfig(Polynomial='x^16 + x^11 + x^4 + 1', InitialConditions=init_cond.', DirectMethod=1, ReflectInputBytes=1, ReflectChecksums=0);
+bits = flip(reshape(bits, 8, [])).';
+bits = bits(:);
 [~, is_valid] = crcDetect(bits, crc_obj);
 is_valid = ~is_valid;
 end
