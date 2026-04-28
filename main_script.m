@@ -1,3 +1,5 @@
+
+
 clear
 close all
 clc
@@ -12,21 +14,28 @@ raw_sample_files = listing(~[listing.isdir]);
 raw_sample_files={raw_sample_files.name};
 raw_sample_files=strcat(path,raw_sample_files);
 
-for k=1
+
+for k=1:length(raw_sample_files)
     synced_samples=raw_samples_to_synced.drone_id_demod(raw_sample_files{k}, fs).';
 
     % Get information from synced samples
     raw_bits = get_raw_bits(synced_samples, 1, 1);
 
+    if isempty(raw_bits)
+        disp("No packet found");
+        continue
+    end
+
     [information, is_valid] = process_bits(raw_bits, raw_sample_files{k});
     information.crc_valid = is_valid;
 
     % Plot a nice map
-    geoscatter([information.app_lat, information.home_lat], [information.app_long, information.home_long], 'filled');
-    geolimits([information.app_lat-0.05, information.app_lat+0.05], [information.app_long-0.05, information.app_long+0.05])
-    geobasemap streets;
-end
+    % figure
+    % geoscatter([information.app_lat, information.home_lat], [information.app_long, information.home_long], 'filled');
+    % geolimits([information.app_lat-0.05, information.app_lat+0.05], [information.app_long-0.05, information.app_long+0.05])
+    % geobasemap streets;
 
+end
 
 
 %% Functions

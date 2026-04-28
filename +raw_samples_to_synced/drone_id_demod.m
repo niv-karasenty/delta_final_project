@@ -4,6 +4,7 @@ function data_qpsk = drone_id_demod(input, fs)
 
     %% ==================== Constants ====================
     P.fs_native = 15.36e6;
+    P.scs = 15e3;
     P.n_fft = 1024;
     P.n_active = 601;
     P.active_lo_1b = 213;
@@ -18,25 +19,28 @@ function data_qpsk = drone_id_demod(input, fs)
     P.zc_root_sym6 = 147;
     P.n_qpsk_per_sym = 600;
 
-    %% ==================== Find The Packet ====================
-    [s, e] = raw_samples_to_synced.detect_packet_window(iq, fs, 2.0e-6, 4.0, 50.0e-6);
-
+    %% ==================== Resample ====================
     if abs(fs - P.fs_native) > 1
-        chunk_native = raw_samples_to_synced.my_resample(iq(s:e), fs, P.fs_native);
+        iq_native = raw_samples_to_synced.my_resample(iq, fs, P.fs_native);
     else
-        chunk_native = iq(s:e);
+        iq_native = iq;
     end
 
-    %% ==================== Time Sync ====================
+    %% ==================== Find The Packet ====================
     tpl4 = raw_samples_to_synced.zc_time_template(P.zc_root_sym4, P);
-    [pkt_start, sync_peak] = raw_samples_to_synced.find_packet_start(chunk_native, tpl4, P);
+    tpl6 = raw_samples_to_synced.zc_time_template(P.zc_root_sym6, P);
+    pkt_start_native = raw_samples_to_synced.find_packet_via_zc(iq_native, tpl4, tpl6, P);
 
-    %% ==================== Find The Freq Offset ====================
-    cfo_hz = raw_samples_to_synced.estimate_cfo(chunk_native, pkt_start, P);
+    if isnan(pkt_start_native)
+        data_qpsk = [];
+        return
+    end
 
-    %% ==================== Get The OFDM symmbols ====================
+    %% ==================== Channel Estimation ====================
+    cfo_hz = raw_samples_to_synced.estimate_cfo(iq_native, pkt_start_native, P);
+
     pkt_len = raw_samples_to_synced.packet_total_samples(P);
-    sl = chunk_native(pkt_start : pkt_start + pkt_len - 1);
+    sl = iq_native(pkt_start_native : pkt_start_native + pkt_len - 1);
     t = (0:numel(sl)-1).' / P.fs_native;
     sl = sl .* exp(-1j*2*pi*cfo_hz*t);
 
@@ -49,13 +53,14 @@ function data_qpsk = drone_id_demod(input, fs)
         pos = pos + cp + P.n_fft;
     end
 
-    spectra = fftshift(fft(bodies), 1);
+    %% ==================== OFDM ====================
+    spectra = fftshift(fft(bodies), 1); 
     lo = P.active_lo_1b;
     hi = P.active_hi_1b;
     actives = spectra(lo:hi, :);
 
     %% ==================== Channel Estimation ====================
-    half = (P.n_active + 1) / 2;
+    half = (P.n_active + 1) / 2; 
     keep = true(P.n_active,1); keep(half) = false;
 
     zc4 = raw_samples_to_synced.zc_freq(P.zc_root_sym4, P.n_active);
@@ -67,23 +72,23 @@ function data_qpsk = drone_id_demod(input, fs)
     h6 = rx6(keep) ./ zc6(keep);
     h_avg = 0.5 * (h4 + h6);
 
-    h_smooth = movmean(h_avg, 7);
+    h_smooth = raw_samples_to_synced.my_movmean(h_avg, 7);
 
-    %% ==================== Open The Symbols ====================
+    %% ==================== Equalize The Symbols ====================
     data_qpsk = zeros(numel(P.data_syms_1b), P.n_qpsk_per_sym);
     for i = 1:numel(P.data_syms_1b)
         rx = actives(:, P.data_syms_1b(i));
         data_qpsk(i, :) = (rx(keep) ./ h_smooth).';
     end
 
-    %% ==================== Finilize ====================
+    %% ==================== Phase ====================
     x4_angle_deg = zeros(1, size(data_qpsk,1));
-    for ii = 1:size(data_qpsk,1)
-        x = data_qpsk(ii,:);
+    for i = 1:size(data_qpsk,1)
+        x = data_qpsk(i,:);
         m4 = mean(x.^4);
         phi = (angle(m4) - pi) / 4;
         phi = phi - (pi/2) * round(phi / (pi/2));
-        data_qpsk(ii,:) = x .* exp(-1j*phi);
-        x4_angle_deg(ii) = angle(mean(data_qpsk(ii,:).^4)) * 180/pi;
+        data_qpsk(i,:) = x .* exp(-1j*phi);
+        x4_angle_deg(i) = angle(mean(data_qpsk(i,:).^4)) * 180/pi;
     end
 end

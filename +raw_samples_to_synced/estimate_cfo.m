@@ -5,7 +5,7 @@ function cfo = estimate_cfo(iq_native, pkt_start, P)
     for k = 1:P.n_symbols
         cp = P.cp_normal;
         if any(k == P.ext_syms_1b), cp = P.cp_extended; end
-        cp_block   = iq_native(pos        : pos + cp - 1);
+        cp_block   = iq_native(pos : pos + cp - 1);
         tail_block = iq_native(pos + cp + P.n_fft - cp : pos + cp + P.n_fft - 1);
         c = sum(cp_block .* conj(tail_block));
         angles(k)  = angle(c);
