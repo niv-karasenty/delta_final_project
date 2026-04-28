@@ -2,32 +2,41 @@ clear
 close all
 clc
 
-% File names and stuff
-base_folder = 'synced_samples/';
-synced_samples_name = dir('synced_samples');
-synced_samples_name = {synced_samples_name(~[synced_samples_name.isdir]).name}';
+fs=10e6;
 
-% Get samples from file
-curr_samples_file_name = append(base_folder, string(synced_samples_name(1)));
-file_id = fopen(curr_samples_file_name, 'rb');
-raw_samples = fread(file_id, inf, 'float32');
-raw_samples = raw_samples(1:2:end) + 1j*raw_samples(2:2:end);
-fclose(file_id);
+path = 'raw_samples/';
+listing = dir(path); % Get all contents
+% Filter out items that are directories
+raw_sample_files = listing(~[listing.isdir]); 
+% Extract just the names into a cell array
+raw_sample_files={raw_sample_files.name};
+raw_sample_files=strcat(path,raw_sample_files);
 
+<<<<<<< HEAD
 raw_samples = drone_id_demod
 
 % Get information from synced samples
 raw_bits = get_raw_bits(raw_samples, 1, 1);
+=======
+>>>>>>> refs/remotes/origin/main
 
-[information, is_valid] = process_bits(raw_bits, curr_samples_file_name);
-information.crc_valid = is_valid;
+for k=1:length(raw_sample_files)
+    synced_samples=raw_samples_to_synced.drone_id_demod(raw_sample_files{k}, fs);
 
-% Plot a nice map
-geoscatter([information.app_lat, information.home_lat], [information.app_long, information.home_long], 'filled');
-geolimits([information.app_lat-0.05, information.app_lat+0.05], [information.app_long-0.05, information.app_long+0.05])
-geobasemap streets;
+    % Get information from synced samples
+    raw_bits = get_raw_bits(synced_samples, 1, 1);
 
-information.crc_valid
+    [information, is_valid] = process_bits(raw_bits, curr_samples_file_name);
+    information.crc_valid = is_valid;
+
+    % Plot a nice map
+    geoscatter([information.app_lat, information.home_lat], [information.app_long, information.home_long], 'filled');
+    geolimits([information.app_lat-0.05, information.app_lat+0.05], [information.app_long-0.05, information.app_long+0.05])
+    geobasemap streets;
+end
+
+
+
 %% Functions
 function raw_bits = get_raw_bits(samples, p, q)
 arguments (Input)
