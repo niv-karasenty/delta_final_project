@@ -54,10 +54,6 @@ xlabel('rber');
 ylabel('uber');
 legend('no correction', 'viterbi','turbo');
 
-%% functions
-
-% bit_vec will be the vector post correction
-% to check if errors still persist
 function err = crc(bit_vec, poly)
 
 arguments
@@ -65,9 +61,9 @@ arguments
     poly="z^24 + z^23 + z^18 + z^17 + z^14 + z^11 + z^10 + z^7 + z^6 + z^5 + z^4 + z^3 + z + 1"
 end
 
-crcConf = crcConfig(poly);
-[~, err] = crcDetect(logical(bit_vec).', crcConf);
 
+crcConf = crcConfig(Polynomial="z^24 + z^23 + z^18 + z^17 + z^14 + z^11 + z^10 + z^7 + z^6 + z^5 + z^4 + z^3 + z + 1");
+[~, err] = crcDetect(logical(corrected_bits_turbo).', crcConf);
 end
 
 function [corrected_viterbi, corrected_turbo, not_corrected] = correct_bits(raw_bits)
