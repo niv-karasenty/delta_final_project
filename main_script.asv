@@ -9,8 +9,11 @@ listing = dir(path); % Get all contents
 % Filter out items that are directories
 raw_sample_files = listing(~[listing.isdir]); 
 % Extract just the names into a cell array
-raw_sample_files = {raw_sample_files.name};
-raw_sample_files=[raw_sample_files{1}]
+raw_sample_files={raw_sample_files.name};
+raw_sample_files=strcat(path,raw_sample_files);
+
+% Get information from synced samples
+raw_bits = get_raw_bits(raw_samples, 1, 1);
 
 for k=1:length(raw_sample_files)
     synced_samples=raw_samples_to_synced.drone_id_demod(raw_sample_files{k}, fs);

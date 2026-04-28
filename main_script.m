@@ -12,21 +12,13 @@ raw_sample_files = listing(~[listing.isdir]);
 raw_sample_files={raw_sample_files.name};
 raw_sample_files=strcat(path,raw_sample_files);
 
-<<<<<<< HEAD
-raw_samples = drone_id_demod
-
-% Get information from synced samples
-raw_bits = get_raw_bits(raw_samples, 1, 1);
-=======
->>>>>>> refs/remotes/origin/main
-
-for k=1:length(raw_sample_files)
-    synced_samples=raw_samples_to_synced.drone_id_demod(raw_sample_files{k}, fs);
+for k=1
+    synced_samples=raw_samples_to_synced.drone_id_demod(raw_sample_files{k}, fs).';
 
     % Get information from synced samples
     raw_bits = get_raw_bits(synced_samples, 1, 1);
 
-    [information, is_valid] = process_bits(raw_bits, curr_samples_file_name);
+    [information, is_valid] = process_bits(raw_bits, raw_sample_files{k});
     information.crc_valid = is_valid;
 
     % Plot a nice map
@@ -40,7 +32,7 @@ end
 %% Functions
 function raw_bits = get_raw_bits(samples, p, q)
 arguments (Input)
-    samples(1,:) % Synced samples array
+    samples(:,:) % Synced samples array
     p (1,1) % Resampled nominator
     q (1,1) % Resamples denominator
 end
@@ -49,7 +41,17 @@ arguments (Output)
     raw_bits (1,:) % Raw bits with errors
 end
 
-raw_bits = demodulate_samples(samples, p, q);
+% QPSK
+M = 4; % QPSK order
+ini_phase = 1*p/4;
+
+symbols = samples(:); % Return to a vector form
+
+raw_symbols = pskdemod(symbols, M, ini_phase, 'gray');
+
+% decimal to binary
+raw_bits = de2bi(raw_symbols).';
+raw_bits = raw_bits(:);
 
 end
 
