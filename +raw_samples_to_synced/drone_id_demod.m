@@ -1,7 +1,7 @@
 function data_qpsk = drone_id_demod(input, fs)
     %% ==================== Read File ====================
-    iq = double(raw_samples_to_synced.read_complex32_file(char(input)));
-
+    %iq = double(raw_samples_to_synced.read_complex32_file(char(input)));
+    iq = input;
     %% ==================== Constants ====================
     P.fs_native = 15.36e6;
     P.scs = 15e3;
