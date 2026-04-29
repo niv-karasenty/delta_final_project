@@ -10,7 +10,7 @@ clc;
 close all;
 clear;
 
-raw_bits = hex_to_binary(fileread("raw_bits/raw_bits_12_Feb_2026_09_30_39_442.txt"));
+raw_bits = hex_to_binary(fileread("'raw_bits/raw_bits_12_Feb_2026_09_30_39_442.txt"));
 [~, corrected, ~] = correct_bits(raw_bits);
 
 %add errors
@@ -25,12 +25,12 @@ err=crc(corrected)
 clc;
 close all;
 clear;
-
+pwd
 raw_prefix='raw_bits';
 test_prefix='processed_bits';
 raw_files=dir(fullfile('raw_bits/', [raw_prefix, '*']));
 test_files=dir(fullfile('processed_bits/', [test_prefix, '*']));
-
+raw_files(1).name
 rbers=1e-4:0.005:1e-1;
 
 bers_viterbi=zeros(1, length(rbers));
@@ -43,7 +43,7 @@ for i = 1:length(rbers)
     for j = 1:length(raw_files)
 
         raw_bits=hex_to_binary(fileread(strcat('raw_bits/',raw_files(j).name)));
-        test_bits=hex_to_binary(fileread(strcat('processed_bits/',test_files(j).name)));
+        test_bits=hex_to_binary(fileread(test_files(j).name));
 
 
         raw_bits=bsc(raw_bits, rbers(i));
