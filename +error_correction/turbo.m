@@ -24,7 +24,6 @@ for n=1:num_iters
     % REMEMBER TO MULTIPLY IN MINUS 1 IF SOFT DEICSION
     corrected_bits1=vitdec(code1,trellis,tb,'trunc','hard');
 
-    corrected_bits1=corrected_bits1(deinterleave_indices);
 
     % P2
 
